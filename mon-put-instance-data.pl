@@ -31,6 +31,7 @@ Description of available options:
   --disk-space-util   Reports disk space utilization in percentages.  
   --disk-space-used   Reports allocated disk space in gigabytes.
   --disk-space-avail  Reports available disk space in gigabytes.
+  --load-average      Reports load average per cpu core
   
   --aggregated[=only]    Adds aggregated metrics for instance type, AMI id, and overall.
   --auto-scaling[=only]  Adds aggregated metrics for Auto Scaling group.
@@ -104,6 +105,7 @@ my $report_swap_used;
 my $report_disk_util;
 my $report_disk_used;
 my $report_disk_avail;
+my $load_average_option;
 my $mem_used_incl_cache_buff;
 my @mount_path;
 my $mem_units;
@@ -142,6 +144,7 @@ my $argv_size = @ARGV;
     'disk-space-util' => \$report_disk_util,
     'disk-space-used' => \$report_disk_used,
     'disk-space-avail' => \$report_disk_avail,
+    'load-average' => \$load_average_option,
     'auto-scaling:s' => \$auto_scaling,
     'aggregated:s' => \$aggregated,
     'memory-units:s' => \$mem_units,
@@ -280,7 +283,8 @@ if (!$report_disk_space && ($report_disk_util || $report_disk_used || $report_di
 
 # check that there is a need to monitor at least something
 if (!$report_mem_util && !$report_mem_used && !$report_mem_avail
-  && !$report_swap_util && !$report_swap_used && !$report_disk_space)
+  && !$report_swap_util && !$report_swap_used && !$report_disk_space
+  && !$load_average_option)
 {
   exit_with_error("No metrics specified for collection and submission to CloudWatch.");
 }
@@ -445,6 +449,32 @@ if ($report_disk_space)
     }
   }
 }
+
+# collect load average metrics
+
+if ($load_average_option) {
+    my $load_average = __get_load_average();
+    add_metric('LoadAverage', 'Count', $load_average);
+}
+
+sub __get_load_average {
+    my $uptime = `uptime`;
+    return unless $uptime;
+
+    my $os_type = $^O;
+    my %type_to_delimiter = (
+        'darwin' => ' ',
+        'linux' => ',',
+        'other' => ',',
+    );
+    my $delimiter = $type_to_delimiter{ lc($os_type) } || $type_to_delimiter{'other'};
+
+    if ($uptime =~ /^.*load\s?averages:\s?(.*)$/) {
+        my @load_averages = split(/$delimiter/, $1);
+        wantarray ? @load_averages : shift @load_averages;
+    }
+}
+
 
 # send metrics over to CloudWatch if any
 
