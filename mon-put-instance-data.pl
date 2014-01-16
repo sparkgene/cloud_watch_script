@@ -460,19 +460,21 @@ if ($load_average_option) {
 sub __get_load_average {
     my $uptime = `uptime`;
     return unless $uptime;
+    chomp($uptime);
 
-    my $os_type = $^O;
+    die unless ($uptime =~ /\A.*load\s?averages:\s?(.*)\z/);
+    my $min_load_average = $1;
+
+    my $os_type = $^O || '';
     my %type_to_delimiter = (
         'darwin' => ' ',
-        'linux' => ',',
-        'other' => ',',
+        'linux'  => ',',
+        'other'  => ',',
     );
     my $delimiter = $type_to_delimiter{ lc($os_type) } || $type_to_delimiter{'other'};
+    my @load_averages = split(/$delimiter/, $min_load_average);
 
-    if ($uptime =~ /^.*load\s?averages:\s?(.*)$/) {
-        my @load_averages = split(/$delimiter/, $1);
-        wantarray ? @load_averages : shift @load_averages;
-    }
+    return wantarray ? @load_averages : shift @load_averages;
 }
 
 
