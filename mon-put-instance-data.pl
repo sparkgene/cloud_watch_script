@@ -462,7 +462,7 @@ sub __get_load_average {
     return unless $uptime;
     chomp($uptime);
 
-    die unless ($uptime =~ /\A.*load\s?averages:\s?(.*)\z/);
+    die unless ($uptime =~ /\A.*load\s?averages?:\s?(.*)\z/);
     my $min_load_average = $1;
 
     my $os_type = $^O || '';
