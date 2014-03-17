@@ -464,7 +464,7 @@ if ($report_disk_space)
       my $mount = $fields[5];
       my $disk_inode = 0;
       $disk_inode = 100 * $inode_used / $inode_total if ($inode_total > 0);
-      add_metric('DiskINodeUsed', 'Percent', $disk_inode, $fsystem, $mount);
+      add_metric('DiskiNodeUtilization', 'Percent', $disk_inode, $fsystem, $mount);
     }
   }
 }
