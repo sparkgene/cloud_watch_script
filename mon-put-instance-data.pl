@@ -31,6 +31,7 @@ Description of available options:
   --disk-space-util   Reports disk space utilization in percentages.  
   --disk-space-used   Reports allocated disk space in gigabytes.
   --disk-space-avail  Reports available disk space in gigabytes.
+  --disk-inode-util   Reports disk inode utilization in percentages.
   --load-average      Reports load average per cpu core
   
   --aggregated[=only]    Adds aggregated metrics for instance type, AMI id, and overall.
@@ -105,6 +106,7 @@ my $report_swap_used;
 my $report_disk_util;
 my $report_disk_used;
 my $report_disk_avail;
+my $report_inode_util;
 my $load_average_option;
 my $mem_used_incl_cache_buff;
 my @mount_path;
@@ -144,6 +146,7 @@ my $argv_size = @ARGV;
     'disk-space-util' => \$report_disk_util,
     'disk-space-used' => \$report_disk_used,
     'disk-space-avail' => \$report_disk_avail,
+    'disk-inode-util' => \$report_inode_util,
     'load-average' => \$load_average_option,
     'auto-scaling:s' => \$auto_scaling,
     'aggregated:s' => \$aggregated,
@@ -274,10 +277,10 @@ foreach my $path (@mount_path) {
   }
 }
 
-if ($report_disk_space && !$report_disk_util && !$report_disk_used && !$report_disk_avail) {
+if ($report_disk_space && !$report_disk_util && !$report_disk_used && !$report_disk_avail && !$report_inode_util) {
   exit_with_error("Disk path is provided but metrics to report disk space are not specified.");
 }
-if (!$report_disk_space && ($report_disk_util || $report_disk_used || $report_disk_avail)) {
+if (!$report_disk_space && ($report_disk_util || $report_disk_used || $report_disk_avail || $report_inode_util)) {
   exit_with_error("Metrics to report disk space are provided but disk path is not specified.");
 }
 
@@ -446,6 +449,22 @@ if ($report_disk_space)
     }
     if ($report_disk_avail) {
       add_metric('DiskSpaceAvailable', $disk_units, $disk_avail / $disk_unit_div, $fsystem, $mount);
+    }
+  }
+  if ($report_inode_util) {
+    my @dfi = `/bin/df -i $df_path`;
+    shift @dfi;
+
+    foreach my $line (@dfi)
+    {
+      my @fields = split('\s+', $line);
+      my $inode_total = $fields[1];
+      my $inode_used = $fields[2];
+      my $fsystem = $fields[0];
+      my $mount = $fields[5];
+      my $disk_inode = 0;
+      $disk_inode = 100 * $inode_used / $inode_total if ($inode_total > 0);
+      add_metric('DiskINodeUsed', 'Percent', $disk_inode, $fsystem, $mount);
     }
   }
 }
